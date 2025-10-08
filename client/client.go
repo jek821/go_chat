@@ -3,47 +3,72 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"go_chat/utils"
 	"net"
 	"os"
 )
 
-func main() {
-	runCli()
-}
+var ClientId int
 
-func runCli() {
-	conn, err := net.Dial("tcp", "127.0.0.1:8080")
+func main() {
+	conn, err := startCli()
 	if err != nil {
-		fmt.Println("Error connecting to server")
+		fmt.Println(err)
 		return
 	}
-
 	defer conn.Close()
 
-	fmt.Println("Connection To Server Successful!")
-
-	takeMsg(conn)
+	// Start message sending loop
+	sendMsg(conn)
 }
 
-func takeMsg(conn net.Conn) {
+func startCli() (net.Conn, error) {
+	conn, err := net.Dial("tcp", "127.0.0.1:8080")
+	if err != nil {
+		return nil, errors.New("ERROR CONNECTING TO SERVER")
+	}
+
+	fmt.Println("Connection To Server Successful!")
+	return conn, nil
+}
+
+func sendMsg(conn net.Conn) {
+	reader := bufio.NewReader(os.Stdin)
 	for {
 		fmt.Println("input text:")
-		reader := bufio.NewReader(os.Stdin)
-		msg, err := reader.ReadString('\n')
+		text, err := reader.ReadString('\n')
 		if err != nil {
 			fmt.Println("Error Reading Input")
+			continue
 		}
-		data := encode(msg)
-		conn.Write(data)
+
+		msg := utils.Message{Body: text}
+
+		// Marshal the message into JSON bytes first
+		msgBytes, err := json.Marshal(msg)
+		if err != nil {
+			fmt.Println("Error encoding message:", err)
+			continue
+		}
+
+		// Now assign the bytes to Data
+		transmission := utils.Transmission{Code: utils.Msg, Data: msgBytes}
+		data := encodeData(transmission)
+
+		_, err = conn.Write(data)
+		if err != nil {
+			fmt.Println("Error Writing Message to Conn")
+			return
+		}
 	}
 }
 
-func encode(msg string) []byte {
-	data, err := json.Marshal(msg)
+func encodeData(data utils.Transmission) []byte {
+	EncodedTransaction, err := json.Marshal(data)
 	if err != nil {
-		fmt.Printf("Error Encoding Message: %s", msg)
+		fmt.Printf("Error Encoding Message: %v\n", err)
 	}
-	return data
-
+	return EncodedTransaction
 }

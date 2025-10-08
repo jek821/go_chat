@@ -3,53 +3,73 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"go_chat/utils"
 	"net"
 )
 
 var Port = 8080
 var Ip = "127.0.0.1"
+var clientPipe chan utils.Transmission
+var clientIdCount = 0
+var clients = make(map[int]*ClientHandler)
 
 func main() {
-	runServ()
+	// Initialize the channel
+	clientPipe = make(chan utils.Transmission, 100)
+
+	l := runServ()
+	fmt.Printf("Server listening on %s:%d\n", Ip, Port)
+
+	// Start a goroutine to process messages from the channel
+	go processMessages()
+
+	newConnHandler(l, clientPipe)
 }
 
-func runServ() {
+func runServ() net.Listener {
 	l, err := net.Listen("tcp", fmt.Sprintf("%s:%d", Ip, Port))
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println("Error starting server:", err)
+		panic(err)
 	}
-	defer l.Close()
+	return l
+}
+
+func newConnHandler(l net.Listener, serverChan chan utils.Transmission) {
 	for {
 		conn, err := l.Accept()
 		if err != nil {
-			fmt.Println(err)
+			fmt.Println("Error accepting connection:", err)
+			continue
 		}
-		handleConn(conn)
-	}
 
-}
+		newID := generateUID()
+		newCliHandler := cliHandlerFactory(newID, conn, serverChan)
+		clients[newID] = &newCliHandler
+		fmt.Printf("New client connected with ID: %d\n", newID)
 
-func handleConn(conn net.Conn) {
-	defer conn.Close()
-	buffer := make([]byte, 1024)
-	for {
-		numBytes, err := conn.Read(buffer)
-		if err != nil {
-			fmt.Println("Error reading connection into buffer or Client Disconnected")
-			return
-		}
-		encodedMsg := buffer[0:numBytes]
-		var decodedMsg = decoder(encodedMsg)
-		fmt.Printf("Message Recieved: %s", decodedMsg)
+		go cliHandler(&newCliHandler)
 	}
 }
 
-func decoder(msg []byte) string {
-	var decodedMsg string
-	err := json.Unmarshal(msg, &decodedMsg)
-	if err != nil {
-		fmt.Println("Error Decoding Message")
-	}
-	return decodedMsg
+func generateUID() int {
+	clientIdCount++
+	return clientIdCount
+}
 
+func processMessages() {
+	for trans := range clientPipe {
+		fmt.Printf("Processing Transmission: Code=%d\n", trans.Code)
+		switch trans.Code {
+		case utils.Msg:
+			var message utils.Message
+			if err := json.Unmarshal(trans.Data, &message); err != nil {
+				fmt.Println("Error unmarshaling Message:", err)
+				continue
+			}
+			fmt.Printf("Message Received: %s\n", message.Body)
+		default:
+			fmt.Printf("Unknown message code: %d\n", trans.Code)
+		}
+	}
 }
