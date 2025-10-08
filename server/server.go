@@ -63,6 +63,9 @@ func processMessages() {
 		switch trans.Code {
 		case utils.Msg:
 			var message utils.Message
+			// The Unmarshalling done in the client handler results in a Transmission Struct
+			// The Transmission struct's data is still in json byte code to allow for the abstraction of the contained struct type
+			// Here we unmarshal the data into the correct struct (in this case message)
 			if err := json.Unmarshal(trans.Data, &message); err != nil {
 				fmt.Println("Error unmarshaling Message:", err)
 				continue
@@ -72,4 +75,17 @@ func processMessages() {
 			fmt.Printf("Unknown message code: %d\n", trans.Code)
 		}
 	}
+}
+
+func writeToClient(client *ClientHandler, transmission utils.Transmission) error {
+	encodedTransmission, err := json.Marshal(transmission)
+	if err != nil {
+		return err
+	}
+	_, err = client.conn.Write(encodedTransmission)
+	if err != nil {
+		return err
+	}
+	return nil
+
 }

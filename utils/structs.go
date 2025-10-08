@@ -7,14 +7,12 @@ type Transmission struct {
 	Data json.RawMessage `json:"data"`
 }
 
-type Registration struct {
-}
-
 type Message struct {
 	Body      string `json:"body"`
 	SessionId int    `json:"session_id"`
 }
 
-type GetSession struct {
-	ClientId int `json:"client_id"`
+type ConnectionRequest struct {
+	Requester int `json:"requester"`
+	Target    int `json:"target"`
 }

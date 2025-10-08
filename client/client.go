@@ -72,3 +72,8 @@ func encodeData(data utils.Transmission) []byte {
 	}
 	return EncodedTransaction
 }
+
+func generateConnectionReq(requester int, target int) utils.ConnectionRequest {
+	connReq := utils.ConnectionRequest{Requester: requester, Target: target}
+	return connReq
+}
