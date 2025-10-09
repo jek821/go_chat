@@ -7,4 +7,5 @@ const (
 	Msg
 	ReqCon
 	AccCon
+	GetId
 )

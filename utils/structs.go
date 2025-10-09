@@ -16,3 +16,8 @@ type ConnectionRequest struct {
 	Requester int `json:"requester"`
 	Target    int `json:"target"`
 }
+
+type GiveClientId struct {
+	Code Code `json:"code"`
+	Id   int  `json:"id"`
+}

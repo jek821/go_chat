@@ -21,6 +21,7 @@ func main() {
 	defer conn.Close()
 
 	// Start message sending loop
+	go handleServer(conn)
 	sendMsg(conn)
 }
 
@@ -73,7 +74,47 @@ func encodeData(data utils.Transmission) []byte {
 	return EncodedTransaction
 }
 
-func generateConnectionReq(requester int, target int) utils.ConnectionRequest {
-	connReq := utils.ConnectionRequest{Requester: requester, Target: target}
-	return connReq
+// func generateConnectionReq(requester int, target int) utils.ConnectionRequest {
+// 	connReq := utils.ConnectionRequest{Requester: requester, Target: target}
+// 	return connReq
+// }
+
+func serverReader(conn net.Conn) (utils.Transmission, error) {
+	buffer := make([]byte, 1024)
+	numBytes, err := conn.Read(buffer)
+	if err != nil {
+		return utils.Transmission{}, err
+	}
+	encodedMsg := buffer[0:numBytes]
+	transmission, err := utils.UnmarshalData(encodedMsg)
+	if err != nil {
+		return utils.Transmission{}, err
+	}
+	return transmission, nil
+}
+
+func handleServer(conn net.Conn) error {
+	defer conn.Close()
+	for {
+		data, err := serverReader(conn)
+		if err != nil {
+			return err
+		}
+		switch data.Code {
+		case utils.GetId:
+			var getId utils.GiveClientId
+
+			err := json.Unmarshal(data.Data, &getId)
+			if err != nil {
+				fmt.Println("Error unmarshaling Message:", err)
+				continue
+			}
+			fmt.Printf("Client ID Received: %d\n", getId.Id)
+		default:
+			fmt.Printf("Unknown message code: %d\n", data.Code)
+
+		}
+
+	}
+
 }
