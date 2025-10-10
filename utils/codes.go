@@ -7,5 +7,5 @@ const (
 	Msg
 	ReqCon
 	AccCon
-	GetId
+	GiveClientNewId
 )

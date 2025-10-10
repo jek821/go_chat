@@ -36,6 +36,12 @@ func cliHandlerFactory(id int, conn net.Conn, serverChan chan utils.Transmission
 	return newHandler
 }
 
+func giveCliNewId(client *Clienthandler) error {
+	var code utils.Code = utils.GiveClientNewId
+	var newId = utils.GiveClientId{Code: code, Id: client.id}
+	var trans, err = utils.TransmissionFactory(code, newId)
+
+}
 func cliHandler(client *ClientHandler) error {
 	defer client.conn.Close()
 	fmt.Printf("Client Handler %d started\n", client.id)
