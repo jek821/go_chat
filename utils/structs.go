@@ -3,6 +3,7 @@ package utils
 import "encoding/json"
 
 type Transmission struct {
+	ID   int             `json:"id"`
 	Code Code            `json:"code"`
 	Data json.RawMessage `json:"data"`
 }

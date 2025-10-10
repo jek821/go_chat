@@ -35,7 +35,7 @@ func startCli() (net.Conn, error) {
 	return conn, nil
 }
 
-func sendMsg(conn net.Conn) {
+func sendMsg(conn net.Conn) error {
 	reader := bufio.NewReader(os.Stdin)
 	for {
 		fmt.Println("input text:")
@@ -47,31 +47,18 @@ func sendMsg(conn net.Conn) {
 
 		msg := utils.Message{Body: text}
 
-		// Marshal the message into JSON bytes first
-		msgBytes, err := json.Marshal(msg)
+		// Now assign the bytes to Data
+		transmission, err := utils.TransmissionFactory(utils.Msg, msg, ClientId)
 		if err != nil {
-			fmt.Println("Error encoding message:", err)
-			continue
+			return err
 		}
 
-		// Now assign the bytes to Data
-		transmission := utils.Transmission{Code: utils.Msg, Data: msgBytes}
-		data := encodeData(transmission)
-
-		_, err = conn.Write(data)
+		_, err = conn.Write(transmission)
 		if err != nil {
 			fmt.Println("Error Writing Message to Conn")
-			return
+			return err
 		}
 	}
-}
-
-func encodeData(data utils.Transmission) []byte {
-	EncodedTransaction, err := json.Marshal(data)
-	if err != nil {
-		fmt.Printf("Error Encoding Message: %v\n", err)
-	}
-	return EncodedTransaction
 }
 
 // func generateConnectionReq(requester int, target int) utils.ConnectionRequest {
@@ -94,21 +81,20 @@ func serverReader(conn net.Conn) (utils.Transmission, error) {
 }
 
 func handleServer(conn net.Conn) error {
-	defer conn.Close()
 	for {
 		data, err := serverReader(conn)
 		if err != nil {
 			return err
 		}
 		switch data.Code {
-		case utils.GetId:
+		case utils.GiveClientNewId:
 			var getId utils.GiveClientId
-
 			err := json.Unmarshal(data.Data, &getId)
 			if err != nil {
 				fmt.Println("Error unmarshaling Message:", err)
 				continue
 			}
+			ClientId = getId.Id
 			fmt.Printf("Client ID Received: %d\n", getId.Id)
 		default:
 			fmt.Printf("Unknown message code: %d\n", data.Code)

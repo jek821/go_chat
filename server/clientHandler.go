@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"go_chat/utils"
 	"net"
@@ -36,24 +35,20 @@ func cliHandlerFactory(id int, conn net.Conn, serverChan chan utils.Transmission
 	return newHandler
 }
 
-func giveCliNewId(client *Clienthandler) error {
+func giveCliNewId(client *ClientHandler) error {
 	var code utils.Code = utils.GiveClientNewId
 	var newId = utils.GiveClientId{Code: code, Id: client.id}
-	var trans, err = utils.TransmissionFactory(code, newId)
-
+	var trans, err = utils.TransmissionFactory(code, newId, client.id)
+	if err != nil {
+		return err
+	}
+	writeToClient(client, trans)
+	return nil
 }
 func cliHandler(client *ClientHandler) error {
 	defer client.conn.Close()
 	fmt.Printf("Client Handler %d started\n", client.id)
-	var giveId utils.GiveClientId
-	giveId.Id = client.id
-	byteData, err := json.Marshal(giveId)
-	if err != nil {
-		return err
-	}
-	var trans = utils.Transmission{Code: utils.GetId, Data: byteData}
-
-	writeToClient(client, trans)
+	giveCliNewId(client)
 
 	for {
 		data, err := clientReader(client)

@@ -70,19 +70,15 @@ func processMessages() {
 				fmt.Println("Error unmarshaling Message:", err)
 				continue
 			}
-			fmt.Printf("Message Received: %s\n", message.Body)
+			fmt.Printf("Message Received: %s\nFrom Client: %d\n", message.Body, trans.ID)
 		default:
 			fmt.Printf("Unknown message code: %d\n", trans.Code)
 		}
 	}
 }
 
-func writeToClient(client *ClientHandler, transmission utils.Transmission) error {
-	encodedTransmission, err := json.Marshal(transmission)
-	if err != nil {
-		return err
-	}
-	_, err = client.conn.Write(encodedTransmission)
+func writeToClient(client *ClientHandler, transmission json.RawMessage) error {
+	_, err := client.conn.Write(transmission)
 	if err != nil {
 		return err
 	}
