@@ -22,7 +22,7 @@ func main() {
 
 	// Start message sending loop
 	go handleServer(conn)
-	sendMsg(conn)
+	sendMsgs(conn)
 }
 
 func startCli() (net.Conn, error) {
@@ -35,7 +35,19 @@ func startCli() (net.Conn, error) {
 	return conn, nil
 }
 
-func sendMsg(conn net.Conn) error {
+func initializeMenu() error {
+	reader := bufio.NewReader(os.Stdin)
+	for {
+		fmt.Println("Menu Options:\nType (X) -> Initiate Connection")
+		text, err := reader.ReadString('\n')
+		if err != nil {
+			return err
+		}
+		fmt.Printf("%s", text)
+	}
+}
+
+func sendMsgs(conn net.Conn) error {
 	reader := bufio.NewReader(os.Stdin)
 	for {
 		fmt.Println("input text:")

@@ -12,6 +12,7 @@ var Ip = "127.0.0.1"
 var clientPipe chan utils.Transmission
 var clientIdCount = 0
 var clients = make(map[int]*ClientHandler)
+var sessions = make(map[int]*utils.Session)
 
 func main() {
 	// Initialize the channel

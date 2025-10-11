@@ -22,3 +22,9 @@ type GiveClientId struct {
 	Code Code `json:"code"`
 	Id   int  `json:"id"`
 }
+
+type Session struct {
+	Id   int
+	Cli1 int
+	Cli2 int
+}
