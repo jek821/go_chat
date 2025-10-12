@@ -58,31 +58,38 @@ func generateUID() int {
 	return clientIdCount
 }
 
-func processMessages() {
-	for trans := range clientPipe {
-		fmt.Printf("Processing Transmission: Code=%d\n", trans.Code)
-		switch trans.Code {
-		case utils.Msg:
-			var message utils.Message
-			// The Unmarshalling done in the client handler results in a Transmission Struct
-			// The Transmission struct's data is still in json byte code to allow for the abstraction of the contained struct type
-			// Here we unmarshal the data into the correct struct (in this case message)
-			if err := json.Unmarshal(trans.Data, &message); err != nil {
-				fmt.Println("Error unmarshaling Message:", err)
-				continue
+func processMessages() error {
+	for {
+		for trans := range clientPipe {
+			fmt.Printf("Processing Transmission: Code=%d\n", trans.Code)
+			switch trans.Code {
+			case utils.MsgCode:
+				var message utils.Message
+				// The Unmarshalling done in the client handler results in a Transmission Struct
+				// The Transmission struct's data is still in json byte code to allow for the abstraction of the contained struct type
+				// Here we unmarshal the data into the correct struct (in this case message)
+				err := json.Unmarshal(trans.Data, &message)
+				if err != nil {
+					return err
+				}
+				fmt.Printf("Message Received: %s\nFrom Client: %d\n", message.Body, message.OriginId)
+			case utils.ConnectionRequestCode:
+				var request utils.ConnectionRequest
+				err := json.Unmarshal(trans.Data, &request)
+				if err != nil {
+					return err
+				}
+				_, ok := clients[request.Target]
+				if ok {
+					trans, err := json.Marshal(trans)
+					if err != nil {
+						return err
+					}
+					writeToClient(clients[request.Target], trans)
+				}
+			default:
+				fmt.Printf("Unknown message code: %d\n", trans.Code)
 			}
-			fmt.Printf("Message Received: %s\nFrom Client: %d\n", message.Body, trans.ID)
-		default:
-			fmt.Printf("Unknown message code: %d\n", trans.Code)
 		}
 	}
-}
-
-func writeToClient(client *ClientHandler, transmission json.RawMessage) error {
-	_, err := client.conn.Write(transmission)
-	if err != nil {
-		return err
-	}
-	return nil
-
 }
