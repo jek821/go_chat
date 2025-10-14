@@ -1,95 +1,131 @@
-package main
+package server
 
 import (
 	"encoding/json"
 	"fmt"
-	"go_chat/utils"
+	"go_chat/pkg/protocol"
+	"log/slog"
 	"net"
 )
 
-var Port = 8080
-var Ip = "127.0.0.1"
-var clientPipe chan utils.Transmission
-var clientIdCount = 0
-var clients = make(map[int]*ClientHandler)
-var sessions = make(map[int]*utils.Session)
-
-func main() {
-	// Initialize the channel
-	clientPipe = make(chan utils.Transmission, 100)
-
-	l := runServ()
-	fmt.Printf("Server listening on %s:%d\n", Ip, Port)
-
-	// Start a goroutine to process messages from the channel
-	go processMessages()
-
-	newConnHandler(l, clientPipe)
+type Server struct {
+	Ip             string
+	Port           int
+	clients        map[int]*ClientHandler
+	serverHandlers map[protocol.Code]protocol.ServerHandler
+	clientPipe     chan protocol.Transmission
+	sessions       map[int]*protocol.Session
+	clientIdCount  int
 }
 
-func runServ() net.Listener {
-	l, err := net.Listen("tcp", fmt.Sprintf("%s:%d", Ip, Port))
-	if err != nil {
-		fmt.Println("Error starting server:", err)
-		panic(err)
+func NewServer(ip string, port int) *Server {
+	s := &Server{
+		Ip:            ip,
+		Port:          port,
+		clients:       make(map[int]*ClientHandler),
+		clientPipe:    make(chan protocol.Transmission, 100),
+		sessions:      make(map[int]*protocol.Session),
+		clientIdCount: 0,
 	}
-	return l
+	s.registerHandlers()
+	return s
 }
 
-func newConnHandler(l net.Listener, serverChan chan utils.Transmission) {
+func (s *Server) registerHandlers() {
+	s.serverHandlers = make(map[protocol.Code]protocol.ServerHandler)
+
+	s.serverHandlers[protocol.MsgCode] = &protocol.ServerMessageHandler{}
+	s.serverHandlers[protocol.ConnectionRequestCode] = &protocol.ServerConnectionRequestHandler{}
+}
+
+func (s *Server) Start() error {
+	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%d", s.Ip, s.Port))
+	if err != nil {
+		return fmt.Errorf("failed to start server: %w", err)
+	}
+	defer listener.Close()
+
+	// Start message processor
+	go s.processMessages()
+
+	// Accept connections
+	return s.acceptConnections(listener)
+}
+
+func (s *Server) acceptConnections(listener net.Listener) error {
 	for {
-		conn, err := l.Accept()
+		conn, err := listener.Accept()
 		if err != nil {
-			fmt.Println("Error accepting connection:", err)
+			slog.Error("Error accepting connection", slog.Any("error", err))
 			continue
 		}
 
-		newID := generateUID()
-		newCliHandler := cliHandlerFactory(newID, conn, serverChan)
-		clients[newID] = &newCliHandler
-		fmt.Printf("New client connected with ID: %d\n", newID)
+		newID := s.generateUID()
+		newCliHandler := s.cliHandlerFactory(newID, conn)
+		s.clients[newID] = &newCliHandler
 
-		go cliHandler(&newCliHandler)
+		fmt.Printf("New client connected with ID: %d\n", newID)
+		go s.cliHandler(&newCliHandler)
 	}
 }
 
-func generateUID() int {
-	clientIdCount++
-	return clientIdCount
+func (s *Server) generateUID() int {
+	s.clientIdCount++
+	return s.clientIdCount
 }
 
-func processMessages() error {
-	for {
-		for trans := range clientPipe {
-			fmt.Printf("Processing Transmission: Code=%d\n", trans.Code)
-			switch trans.Code {
-			case utils.MsgCode:
-				var message utils.Message
-				// The Unmarshalling done in the client handler results in a Transmission Struct
-				// The Transmission struct's data is still in json byte code to allow for the abstraction of the contained struct type
-				// Here we unmarshal the data into the correct struct (in this case message)
-				err := json.Unmarshal(trans.Data, &message)
-				if err != nil {
-					return err
-				}
-				fmt.Printf("Message Received: %s\nFrom Client: %d\n", message.Body, message.OriginId)
-			case utils.ConnectionRequestCode:
-				var request utils.ConnectionRequest
-				err := json.Unmarshal(trans.Data, &request)
-				if err != nil {
-					return err
-				}
-				_, ok := clients[request.Target]
-				if ok {
-					trans, err := json.Marshal(trans)
-					if err != nil {
-						return err
-					}
-					writeToClient(clients[request.Target], trans)
-				}
-			default:
-				fmt.Printf("Unknown message code: %d\n", trans.Code)
-			}
+func (s *Server) processMessages() error {
+	for trans := range s.clientPipe {
+		handler, ok := s.serverHandlers[trans.Code]
+		if !ok {
+			slog.Warn("Unknown message code", slog.Int("code", int(trans.Code)))
+			continue
+		}
+
+		if err := handler.Handle(trans, s); err != nil {
+			slog.Error("Handler error",
+				slog.Int("code", int(trans.Code)),
+				slog.Any("error", err))
 		}
 	}
+	return nil
+}
+
+// ServerContext interface implementations
+func (s *Server) RouteToClient(clientID int, trans protocol.Transmission) error {
+	client, ok := s.clients[clientID]
+	if !ok {
+		return fmt.Errorf("client %d not found", clientID)
+	}
+
+	data, err := json.Marshal(trans)
+	if err != nil {
+		return err
+	}
+
+	return client.transport.Write(data)
+}
+
+func (s *Server) BroadcastMessage(msg protocol.Message) error {
+	_, data, err := protocol.TransmissionFactory(protocol.MsgCode, msg)
+	if err != nil {
+		return err
+	}
+
+	for id, client := range s.clients {
+		if id == msg.OriginId {
+			continue // Don't send back to sender
+		}
+		if err := client.transport.Write(data); err != nil {
+			slog.Error("Broadcast failed",
+				slog.Int("clientID", id),
+				slog.Any("error", err))
+		}
+	}
+	return nil
+}
+
+func (s *Server) GetClient(clientID int) bool {
+	_, ok := s.clients[clientID]
+	return ok
 }

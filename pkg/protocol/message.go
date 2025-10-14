@@ -13,7 +13,7 @@ type ConnectionRequest struct {
 	Target    int `json:"target"`
 }
 
-// GiveClientId is sent by server to assign client an ID
+// GiveClientId is sent by server to assign a client an ID
 type GiveClientId struct {
 	Id int `json:"id"`
 }
