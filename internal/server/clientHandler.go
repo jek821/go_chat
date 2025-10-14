@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"go_chat/internal/client"
 	"go_chat/utils"
 	"net"
 )
@@ -11,7 +12,7 @@ import (
 type ClientHandler struct {
 	id        int
 	conn      net.Conn
-	channelIn chan utils.Transmission
+	channelIn chan client.Transmission
 }
 
 // Main Function For Client Handler

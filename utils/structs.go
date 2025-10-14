@@ -1,17 +1,5 @@
 package utils
 
-import (
-	"encoding/json"
-	"net"
-	"sync"
-)
-
-type Transmission struct {
-	Uid  uint32          `json:"uid"`
-	Code Code            `json:"code"`
-	Data json.RawMessage `json:"data"`
-}
-
 type Message struct {
 	OriginId  int    `json:"originid"`
 	Body      string `json:"body"`
@@ -21,10 +9,6 @@ type Message struct {
 type ConnectionRequest struct {
 	Requester int `json:"requester"`
 	Target    int `json:"target"`
-}
-
-type GiveClientId struct {
-	Id int `json:"id"`
 }
 
 type Session struct {
@@ -41,11 +25,4 @@ type SessionAccept struct {
 type SessionReject struct {
 	RejectorId int
 	RejectedId int
-}
-
-type Client struct {
-	ClientID  int
-	Conn      net.Conn
-	Awaiters  map[uint32]chan Transmission
-	AwaitLock sync.Mutex
 }
