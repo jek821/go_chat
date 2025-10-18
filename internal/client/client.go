@@ -8,10 +8,12 @@ import (
 )
 
 type Client struct {
+	transport Transport
 	clientID  int
 	conn      net.Conn
-	awaiters  map[uint32]chan protocol.Transmission // ← Changed
+	awaiters  map[uint32]chan protocol.Transmission
 	awaitLock sync.Mutex
+	handlers  map[protocol.Code]protocol.Handler
 }
 
 func NewClient(serverAddr string) (*Client, error) {
@@ -21,11 +23,37 @@ func NewClient(serverAddr string) (*Client, error) {
 	}
 
 	client := &Client{
-		conn:     conn,
-		awaiters: make(map[uint32]chan protocol.Transmission), // ← Changed
+		conn:      conn,
+		transport: &TCPTransport{Conn: conn},
+		awaiters:  make(map[uint32]chan protocol.Transmission),
+		handlers:  make(map[protocol.Code]protocol.Handler),
 	}
 
+	client.registerHandler()
+
 	return client, nil
+}
+
+func (c *Client) registerHandler() {
+	// handle client ID assignment
+	c.handlers[protocol.GiveClientNewIdCode] = &protocol.ClientIDHandler{
+		OnReceive: func(id int) {
+			c.SetID(id)
+			fmt.Printf("Received new client id %d\n", id)
+		},
+	}
+
+	c.handlers[protocol.ConnectionRequestCode] = &protocol.ConnectionRequestHandler{
+		OnReceive: func(req protocol.ConnectionRequest) {
+			fmt.Printf("Received connection request from client %d\n", req.Requester)
+		},
+	}
+
+	c.handlers[protocol.MsgCode] = &protocol.MessageHandler{
+		OnReceive: func(msg protocol.Message) {
+			fmt.Printf("[Client %d received message] %s\n", msg.OriginId, msg.Body)
+		},
+	}
 }
 
 // GetID returns the client's ID
