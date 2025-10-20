@@ -10,16 +10,21 @@ type AwaitMap struct {
 	chLock sync.Mutex
 }
 
+func CreateAwaitMap() AwaitMap {
+	return AwaitMap{Map: make(map[int]chan Protocol.Payload),
+		chLock: sync.Mutex{}}
+}
+
 func (m *AwaitMap) NewAwaiter(pid int, ch chan Protocol.Payload) {
 	m.chLock.Lock()
 	m.Map[pid] = ch
 	m.chLock.Unlock()
 }
 
-func (m *AwaitMap) ResolveWaiter(pid int, payload Protocol.Payload) {
+func (m *AwaitMap) ResolveWaiter(payload Protocol.Payload) {
 	m.chLock.Lock()
-	ch := m.Map[pid]
+	ch := m.Map[payload.Pid]
 	ch <- payload
-	delete(m.Map, pid)
+	delete(m.Map, payload.Pid)
 	m.chLock.Unlock()
 }

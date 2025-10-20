@@ -14,6 +14,7 @@ type Client struct {
 	conn net.Conn
 	ID   int
 	Shared.ListenerLogic
+	Awaiters Shared.AwaitMap
 }
 
 func NewClient() *Client {
@@ -28,8 +29,9 @@ func NewClient() *Client {
 	clientId := -1
 	// store the client
 	client := &Client{
-		conn: conn,
-		ID:   clientId,
+		conn:     conn,
+		ID:       clientId,
+		Awaiters: Shared.CreateAwaitMap(),
 	}
 
 	return client
@@ -45,6 +47,12 @@ func (c *Client) RunListener() {
 }
 
 func (c *Client) PayloadHandler(p Protocol.Payload) {
+	// First Check Awaiters
+	_, ok := c.Awaiters.Map[p.Pid]
+	if ok {
+		c.Awaiters.ResolveWaiter(p)
+	}
+
 	switch p.Code {
 	case Protocol.TestCode:
 	default:
