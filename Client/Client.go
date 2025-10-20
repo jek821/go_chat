@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"go_chat/Protocol"
 	"go_chat/Shared"
 	"go_chat/Utils"
@@ -12,7 +13,7 @@ const serverIp = "127.0.0.1:8080"
 type Client struct {
 	conn net.Conn
 	ID   int
-	Shared.Listener
+	Shared.ListenerLogic
 }
 
 func NewClient() *Client {
@@ -40,10 +41,15 @@ func (c *Client) GetID() int {
 }
 
 func (c *Client) RunListener() {
-	go c.Listener.HandleIncomingPayLoads(c.conn, c.PayloadHandler)
+	go c.HandleIncomingPayLoads(c.conn, c.PayloadHandler)
 }
 
 func (c *Client) PayloadHandler(p Protocol.Payload) {
+	switch p.Code {
+	case Protocol.TestCode:
+	default:
+		fmt.Println("Unknown Payload Code")
+	}
 
 }
 

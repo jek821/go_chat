@@ -6,6 +6,7 @@ import (
 )
 
 type Payload struct {
+	Pid  int
 	Code Code
 	Data json.RawMessage
 }
