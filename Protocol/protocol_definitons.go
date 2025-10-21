@@ -23,4 +23,5 @@ type Test struct {
 }
 
 type GiveClientId struct {
+	Id int
 }

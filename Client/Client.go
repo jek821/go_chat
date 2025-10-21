@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"go_chat/Protocol"
 	"go_chat/Shared"
@@ -14,6 +15,7 @@ type Client struct {
 	conn net.Conn
 	ID   int
 	Shared.ListenerLogic
+	Shared.SenderLogic
 	Awaiters Shared.AwaitMap
 }
 
@@ -43,7 +45,7 @@ func (c *Client) GetID() int {
 }
 
 func (c *Client) RunListener() {
-	go c.HandleIncomingPayLoads(c.conn, c.PayloadHandler)
+	c.HandleIncomingPayLoads(c.conn, c.PayloadHandler)
 }
 
 func (c *Client) PayloadHandler(p Protocol.Payload) {
@@ -51,10 +53,18 @@ func (c *Client) PayloadHandler(p Protocol.Payload) {
 	_, ok := c.Awaiters.Map[p.Pid]
 	if ok {
 		c.Awaiters.ResolveWaiter(p)
+		return
 	}
 
 	switch p.Code {
-	case Protocol.TestCode:
+	case Protocol.GiveClientIdCode:
+		var data Protocol.GiveClientId
+		err := json.Unmarshal(p.Data, &data)
+		if err != nil {
+			Utils.HandleErr(err)
+		}
+		fmt.Printf("Received ID: %d\n", data.Id)
+
 	default:
 		fmt.Println("Unknown Payload Code")
 	}

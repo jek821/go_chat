@@ -1,8 +1,7 @@
-package Server
+package main
 
-import "net"
+func main() {
+	s := newServer()
+	s.acceptClients()
 
-type Server struct {
-	conn        net.Conn
-	cliHandlers map[int]ClientHandler
 }

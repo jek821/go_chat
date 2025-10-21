@@ -5,4 +5,5 @@ type Code int
 const (
 	TestCode Code = iota
 	RequestClientIdCode
+	GiveClientIdCode
 )
