@@ -6,6 +6,6 @@ import (
 )
 
 func HandleErr(err error) {
-	slog.Error("error reading incoming message", err)
-	fmt.Println("ERROR READING INCOMING TRANSMISSION %w", err)
+	slog.Error("error occurred", "error", err)
+	fmt.Printf("ERROR: %v\n", err)
 }

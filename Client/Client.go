@@ -39,13 +39,18 @@ func NewClient() *Client {
 	return client
 }
 
-func (c *Client) GetID() int {
-	// Sends a request to the server for a new client ID
-	return c.ID
+func (c *Client) HandleDisconnect() {
+	fmt.Println("Connection To Server Lost")
+	err := c.conn.Close()
+	if err != nil {
+		Utils.HandleErr(err)
+	}
+	return
+
 }
 
 func (c *Client) RunListener() {
-	c.HandleIncomingPayLoads(c.conn, c.PayloadHandler)
+	c.HandleIncomingPayLoads(c.conn, c.PayloadHandler, c.HandleDisconnect)
 }
 
 func (c *Client) PayloadHandler(p Protocol.Payload) {

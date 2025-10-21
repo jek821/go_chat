@@ -2,9 +2,11 @@ package Shared
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"go_chat/Protocol"
 	"go_chat/Utils"
+	"io"
 	"log/slog"
 	"net"
 )
@@ -12,12 +14,15 @@ import (
 type ListenerLogic struct {
 }
 
-func (l *ListenerLogic) HandleIncomingPayLoads(conn net.Conn, handler func(payload Protocol.Payload)) {
+func (l *ListenerLogic) HandleIncomingPayLoads(conn net.Conn, handler func(payload Protocol.Payload), disconnect func()) {
 	//TODO: FIX THIS BUFFER
 	shittyBuffer := make([]byte, 1000)
 	for {
 		numBytes, err := conn.Read(shittyBuffer)
 		if err != nil {
+			if errors.Is(err, io.EOF) || errors.Is(err, net.ErrClosed) {
+				disconnect()
+			}
 			Utils.HandleErr(err)
 		}
 		encodedTrans := shittyBuffer[:numBytes]

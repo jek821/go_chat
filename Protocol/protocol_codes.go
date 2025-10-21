@@ -6,4 +6,5 @@ const (
 	TestCode Code = iota
 	RequestClientIdCode
 	GiveClientIdCode
+	EndClientCode
 )

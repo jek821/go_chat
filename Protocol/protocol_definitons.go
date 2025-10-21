@@ -13,7 +13,10 @@ type Payload struct {
 
 func (p *Payload) EncodePayload() json.RawMessage {
 	encodedPayload, err := json.Marshal(p)
-	Utils.HandleErr(err)
+	if err != nil {
+		Utils.HandleErr(err)
+	}
+
 	return encodedPayload
 
 }
@@ -23,5 +26,9 @@ type Test struct {
 }
 
 type GiveClientId struct {
+	Id int
+}
+
+type EndClient struct {
 	Id int
 }
